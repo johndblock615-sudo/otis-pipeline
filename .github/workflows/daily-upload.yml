@@ -1,0 +1,52 @@
+name: Daily OTIS upload
+
+# Publishes one queued short per day to the OTIS YouTube channel.
+# Videos are produced on the VM and pushed into queue/ with a sidecar JSON.
+on:
+  schedule:
+    # 09:00 PKT every day
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Validate token and queue without uploading"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Publish next queued short
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python3 scripts/publish_next.py --dry-run
+          else
+            python3 scripts/publish_next.py
+          fi
+
+      - name: Commit queue changes
+        if: success() && inputs.dry_run != true
+        run: |
+          git config user.name "otis-pipeline"
+          git config user.email "otis-pipeline@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+          else
+            git commit -m "daily upload $(date -u +%F)"
+            git push
+          fi
