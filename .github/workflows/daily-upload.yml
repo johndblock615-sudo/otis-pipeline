@@ -50,3 +50,5 @@ jobs:
             git commit -m "daily upload $(date -u +%F)"
             git push
           fi
+
+# reindex
