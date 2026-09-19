@@ -72,6 +72,7 @@ def state_file(path, size):
 
 
 def save_state(sf, session_uri, confirmed):
+    os.makedirs(os.path.dirname(sf), exist_ok=True)
     json.dump({"session_uri": session_uri, "confirmed": confirmed}, open(sf, "w"))
     os.chmod(sf, 0o600)
 
